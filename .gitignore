@@ -1,0 +1,39 @@
+# build
+/out/
+/build/
+*.zip
+*.pdb
+*.exe
+*.obj
+*.o
+
+# recompiled code, derived from the game
+/generated/
+
+# user's own game files
+/assets/
+
+# runtime files
+settings.toml
+/logs/
+/hdd/
+/CrashDumps/
+
+# editors
+.vs/
+.vscode/
+.idea/
+
+# Local temporary folder
+.local
+
+# this machine's play folder and test files
+/jogar/
+/docs/*.png
+mods/
+port_version.txt
+
+# the upscaling SDKs: scripts/baixar-sdks.ps1 fetches them from their makers
+/third_party/dlss/
+/third_party/ffx/
+/third_party/xess/
