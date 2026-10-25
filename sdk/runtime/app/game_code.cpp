@@ -600,13 +600,14 @@ void OnClick(HWND hwnd, LPARAM lp) {
     else if (PtInRect(&l.delete_toggle, at)) g_delete_compiler = !g_delete_compiler;
 }
 
-// a controller's A starts, B leaves and X ticks the delete box, once ready; on the press, not the hold
+// a controller's A starts, B leaves and X ticks the delete box, once ready; on the press, not the hold, and only with
+// the window in front: a button pressed in another game (the window waits behind it) must not start or close this one
 void PollController(HWND hwnd) {
     static uint16_t held = 0;
     uint16_t now = input::HeldOnAnyController();
     uint16_t pressed = now & ~held;
     held = now;
-    if (g_progress.stage != Stage::Ready) return;
+    if (g_progress.stage != Stage::Ready || GetForegroundWindow() != hwnd) return;
     if (pressed & XINPUT_GAMEPAD_X) g_delete_compiler = !g_delete_compiler;
     if (pressed & XINPUT_GAMEPAD_A) CloseWindowWith(hwnd, true);
     else if (pressed & XINPUT_GAMEPAD_B) CloseWindowWith(hwnd, false);
