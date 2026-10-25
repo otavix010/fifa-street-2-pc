@@ -3,6 +3,8 @@
 
 namespace game {
 void ScriptPad(int port, input::Pad& pad);  // pad_script.cpp
+bool OsdMessage(void* hwnd, uint32_t msg, uintptr_t wp, intptr_t lp, intptr_t* result);  // osd.cpp
+void OsdUi(double fps);
 }
 
 // what the runtime asks of the game; strings must be set, hooks may stay null
@@ -21,8 +23,8 @@ const app::GameInfo app::kGame = {
     .init = nullptr,                          // after the settings load, before the window and boot
     .loaded = nullptr,                        // image in memory, before its entry point runs
     .window = nullptr,                        // the game window is up
-    .message = nullptr,                       // window messages first; true takes one
-    .ui = nullptr,                            // ImGui drawing each frame
+    .message = game::OsdMessage,              // window messages first; true takes one: F10, the meter
+    .ui = game::OsdUi,                        // ImGui drawing each frame: the meter's line
     .pad = game::ScriptPad,                   // changes a polled pad: FS2_PAD test scripts
     .rumble = nullptr,                        // changes a rumble before it is set
 };

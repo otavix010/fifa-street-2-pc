@@ -672,12 +672,16 @@ HWND OpenWindow() {
     int h = r.bottom - r.top;
     int x = (GetSystemMetrics(SM_CXSCREEN) - w) / 2;
     int y = (GetSystemMetrics(SM_CYSCREEN) - h) / 2;
+    if (int tx, ty; TestWindow(&tx, &ty)) {
+        x = tx - w / 2;
+        y = ty - h / 2;
+    }
     HWND hwnd = CreateWindowExW(0, wc.lpszClassName, kGame.title, style, x, y, w, h, nullptr, nullptr, inst, nullptr);
     NONCLIENTMETRICSW metrics{sizeof(metrics)};
     SystemParametersInfoForDpi(SPI_GETNONCLIENTMETRICS, sizeof(metrics), &metrics, 0, dpi);
     SetWindowLongPtrW(hwnd, GWLP_USERDATA, LONG_PTR(CreateFontIndirectW(&metrics.lfMessageFont)));
     SetTimer(hwnd, 1, 50, nullptr);  // the controller is read with each repaint
-    ShowWindow(hwnd, SW_SHOW);
+    ShowWindow(hwnd, TestWindow() ? SW_SHOWNOACTIVATE : SW_SHOW);
     return hwnd;
 }
 

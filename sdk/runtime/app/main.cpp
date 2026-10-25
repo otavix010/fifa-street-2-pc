@@ -5,6 +5,7 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
+#include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <windows.h>
@@ -112,6 +113,7 @@ void ApplyNow() {
     }
     Mode out = Output();
     LONG_PTR visible = IsWindowVisible(g_hwnd) ? WS_VISIBLE : 0;  // a window held back for a splash or handover stays so
+    UINT activate = TestWindow() ? SWP_NOACTIVATE : 0;
     DEVMODEW desktop{};
     desktop.dmSize = sizeof(desktop);
     EnumDisplaySettingsW(mi.szDevice, ENUM_REGISTRY_SETTINGS, &desktop);
@@ -133,11 +135,11 @@ void ApplyNow() {
         const RECT& a = mi.rcWork;
         SetWindowLongPtrW(g_hwnd, GWL_STYLE, WS_OVERLAPPEDWINDOW | visible);
         SetWindowPos(g_hwnd, HWND_NOTOPMOST, a.left + (a.right - a.left - w) / 2, a.top + (a.bottom - a.top - h) / 2, w, h,
-                     SWP_FRAMECHANGED);
+                     SWP_FRAMECHANGED | activate);
     } else {
         const RECT& m = mi.rcMonitor;
         SetWindowLongPtrW(g_hwnd, GWL_STYLE, WS_POPUP | visible);
-        SetWindowPos(g_hwnd, HWND_NOTOPMOST, m.left, m.top, m.right - m.left, m.bottom - m.top, SWP_FRAMECHANGED);
+        SetWindowPos(g_hwnd, HWND_NOTOPMOST, m.left, m.top, m.right - m.left, m.bottom - m.top, SWP_FRAMECHANGED | activate);
     }
 }
 
@@ -180,8 +182,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         case kOpenWindow:
             CloseSplash();
             if (wp) ApplyNow();
-            ShowWindow(hwnd, SW_SHOW);
-            SetForegroundWindow(hwnd);
+            ShowWindow(hwnd, TestWindow() ? SW_SHOWNOACTIVATE : SW_SHOW);
+            if (!TestWindow()) SetForegroundWindow(hwnd);
             return 0;
         case WM_CLOSE:
             DestroyWindow(hwnd);
@@ -194,6 +196,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 }
 
 }  // namespace
+
+bool TestWindow(int* x, int* y) {
+    static int px = 0, py = 0;
+    static const bool on = [] {
+        const char* v = std::getenv("FS2_TEST_WINDOW");
+        return v && std::sscanf(v, "%d,%d", &px, &py) == 2;
+    }();
+    if (on && x) *x = px;
+    if (on && y) *y = py;
+    return on;
+}
 
 std::filesystem::path ExeDir() {
     wchar_t p[MAX_PATH];
@@ -293,14 +306,16 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int) {
     wc.hbrBackground = static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
     wc.lpszClassName = app::kGame.name;
     RegisterClassExW(&wc);
-    app::g_hwnd = CreateWindowExW(0, wc.lpszClassName, app::kGame.title, WS_POPUP, 0, 0, 1280, 720,
+    int at_x = 640, at_y = 360;  // the window's centre
+    app::TestWindow(&at_x, &at_y);
+    app::g_hwnd = CreateWindowExW(0, wc.lpszClassName, app::kGame.title, WS_POPUP, at_x - 640, at_y - 360, 1280, 720,
                                   nullptr, nullptr, inst, nullptr);
     // behind a splash the window stays hidden until the game's first frame; handed over, it is set up hidden
     if (handover) {
         app::ApplyNow();
     } else if (!splash) {
         app::ApplyNow();
-        ShowWindow(app::g_hwnd, SW_SHOW);
+        ShowWindow(app::g_hwnd, app::TestWindow() ? SW_SHOWNOACTIVATE : SW_SHOW);
     }
 
     IMGUI_CHECKVERSION();

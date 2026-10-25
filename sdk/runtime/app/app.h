@@ -69,6 +69,9 @@ std::string Sha1(const std::vector<uint8_t>& data);  // lower case hex
 // loaded; false after telling the player why the game cannot start, or when they chose not to start it yet
 bool PrepareGameCode(const GameFiles& game);
 int Instance();  // --instance N on the command line, 0 without: a second copy on this PC for system link tests
+// development: FS2_TEST_WINDOW=x,y opens the windows centred on that point, on its monitor, and never activates them,
+// for test runs beside someone using the PC; x and y get the point, and are left alone without it
+bool TestWindow(int* x = nullptr, int* y = nullptr);
 void* Window();  // HWND
 // boot splash: GameInfo::splash .bmp or .png beside the exe, up before the game window
 bool OpenSplash();        // window thread, at launch; false without one, and the game window opens at once

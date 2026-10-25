@@ -38,6 +38,11 @@ endif()
 # target name = GAME_EXE in build.bat, xbe = GAME_XBE
 add_xbe_image(FIFAStreet2 default.xbe game.toml ${GAME_PARTITIONS} game)
 
+# the performance meter (src/common/osd.cpp): the Otavix ports' standard line (otavix_osd.c, C) and the numbers from
+# Windows (osd_stats.cpp)
+target_sources(FIFAStreet2 PRIVATE src/common/otavix_osd.c)
+target_link_libraries(FIFAStreet2 PRIVATE pdh user32 gdi32)
+
 # map of the code DLL: the crash log gives the module offset of a fault, the map names the guest function
 target_link_options(FIFAStreet2_code PRIVATE -Wl,/map:${CMAKE_CURRENT_BINARY_DIR}/FIFAStreet2.map)
 

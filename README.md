@@ -18,6 +18,8 @@ gráficos e opções de PC.
   e profundidade reais do jogo.
 - Filtro anisotrópico, V-sync, janela, sem bordas ou tela cheia.
 - Controles de Xbox, PlayStation e Switch, com troca de botões e zona morta.
+- Medidor de desempenho igual ao dos outros ports Otavix (fps, CPU, GPU e memória, nítido em qualquer resolução):
+  liga em Configurações > Desempenho no launcher, e o F10 mostra ou esconde durante o jogo.
 - **Mods** sem tocar no jogo: arquivos em `mods/<mod>/` substituem os do disco (veja abaixo).
 
 | Tela inicial | Menu |
