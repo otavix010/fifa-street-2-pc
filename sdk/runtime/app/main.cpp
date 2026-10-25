@@ -38,27 +38,38 @@ constexpr UINT kApplyDisplay = WM_APP + 1, kOpenWindow = WM_APP + 2;
 bool g_mode_changed = false;
 bool g_apply_posted = false;  // a display apply is waiting in the queue or running
 
+// "FIFAStreet2.exe +1A2B3C": the module and offset of a code address, to look up in that module's map
+void LogCodeAddress(const char* what, const void* a) {
+    HMODULE mod = nullptr;
+    wchar_t path[MAX_PATH] = {};
+    if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                           static_cast<LPCWSTR>(a), &mod))
+        GetModuleFileNameW(mod, path, MAX_PATH);
+    const wchar_t* name = std::wcsrchr(path, L'\\') ? std::wcsrchr(path, L'\\') + 1 : path;
+    LOGE("  %s %ls +%llX", what, mod ? name : L"?",
+         (unsigned long long)(reinterpret_cast<uintptr_t>(a) - reinterpret_cast<uintptr_t>(mod)));
+}
+
 // crash dump in CrashDumps beside the exe
 LONG WINAPI WriteCrashDump(EXCEPTION_POINTERS* e) {
-    // the dump holds no guest memory: the guest registers and return addresses go to the log
-    if (kernel::Thread* t = kernel::Current(); e && t && t->ctx) {
+    // the dump holds no guest memory: the guest registers and return addresses go to the log, from any thread (the
+    // game's, or the port's own: the renderer, the audio)
+    if (e) {
         auto* r = e->ExceptionRecord;
-        LOGE("exception %08lX at %p on guest thread %X", r->ExceptionCode, r->ExceptionAddress, t->id);
-        // module and offset of the faulting instruction, to look up in the code DLL's map
-        HMODULE mod = nullptr;
-        if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                               static_cast<LPCWSTR>(r->ExceptionAddress), &mod)) {
-            wchar_t path[MAX_PATH] = {};
-            GetModuleFileNameW(mod, path, MAX_PATH);
-            LOGE("  in %ls +%llX", path, (unsigned long long)(reinterpret_cast<uintptr_t>(r->ExceptionAddress) -
-                                                             reinterpret_cast<uintptr_t>(mod)));
-        }
+        kernel::Thread* t = kernel::Current();
+        if (t) LOGE("exception %08lX at %p on guest thread %X", r->ExceptionCode, r->ExceptionAddress, t->id);
+        else LOGE("exception %08lX at %p on host thread %lu", r->ExceptionCode, r->ExceptionAddress, GetCurrentThreadId());
+        LogCodeAddress("in", r->ExceptionAddress);
         if (r->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && r->NumberParameters >= 2) {
             uint64_t va = r->ExceptionInformation[1], g = uint64_t(reinterpret_cast<uintptr_t>(kernel::g_base));
             LOGE("  %s %llX, guest %08llX", r->ExceptionInformation[0] ? "write" : "read", (unsigned long long)va,
                  (unsigned long long)(va - g));
         }
-        kernel::LogGuestStack(*t->ctx, 256);
+        // the host calls that led here (this filter runs on the faulting thread, below the exception dispatcher)
+        void* frames[48];
+        USHORT n = RtlCaptureStackBackTrace(0, 48, frames, nullptr);
+        for (USHORT i = 0; i < n; i++) LogCodeAddress("from", frames[i]);
+        if (t && t->ctx) kernel::LogGuestStack(*t->ctx, 256);
     }
     auto dir = ExeDir() / "CrashDumps";
     CreateDirectoryW(dir.c_str(), nullptr);

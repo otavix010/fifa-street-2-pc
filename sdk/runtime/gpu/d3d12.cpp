@@ -407,6 +407,60 @@ struct GuestExtent {
     uint32_t h;
 };
 
+// ------------------------------------------------------------------------------------------------ GPU lost
+// DRED: when the GPU drops the device (a hang, a page fault), the driver keeps the last operations of each command
+// list and the faulting address, for the log
+void EnableDred() {
+    ComPtr<ID3D12DeviceRemovedExtendedDataSettings> s;
+    if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&s)))) return;
+    s->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+    s->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+}
+
+const char* BreadcrumbName(D3D12_AUTO_BREADCRUMB_OP op) {
+    static const char* names[] = {"SetMarker", "BeginEvent", "EndEvent", "DrawInstanced", "DrawIndexedInstanced",
+                                  "ExecuteIndirect", "Dispatch", "CopyBufferRegion", "CopyTextureRegion", "CopyResource",
+                                  "CopyTiles", "ResolveSubresource", "ClearRenderTargetView", "ClearUnorderedAccessView",
+                                  "ClearDepthStencilView", "ResourceBarrier", "ExecuteBundle", "Present",
+                                  "ResolveQueryData", "BeginSubmission", "EndSubmission"};
+    return unsigned(op) < std::size(names) ? names[op] : "other";
+}
+
+// a Present that found the device gone: the reason and what DRED kept go to the log, then the crash path (a dump,
+// and the launcher's error report)
+void CheckPresent(ID3D12Device* dev, HRESULT hr) {
+    if (hr != DXGI_ERROR_DEVICE_REMOVED && hr != DXGI_ERROR_DEVICE_RESET && hr != DXGI_ERROR_DEVICE_HUNG) {
+        if (FAILED(hr)) LOG_FIRST(8, "d3d12: Present failed: %08lX", (unsigned long)hr);
+        return;
+    }
+    LOGE("d3d12: the GPU dropped the device (Present %08lX, reason %08lX)", (unsigned long)hr,
+         (unsigned long)dev->GetDeviceRemovedReason());
+    ComPtr<ID3D12DeviceRemovedExtendedData> d;
+    if (SUCCEEDED(dev->QueryInterface(IID_PPV_ARGS(&d)))) {
+        D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT b{};
+        if (SUCCEEDED(d->GetAutoBreadcrumbsOutput(&b)))
+            for (auto* n = b.pHeadAutoBreadcrumbNode; n; n = n->pNext) {
+                UINT done = n->pLastBreadcrumbValue ? *n->pLastBreadcrumbValue : 0;
+                if (done >= n->BreadcrumbCount) continue;  // that list finished
+                LOGE("  list %ls: %u of %u operations done", n->pCommandListDebugNameW ? n->pCommandListDebugNameW : L"?",
+                     done, n->BreadcrumbCount);
+                for (UINT i = done > 6 ? done - 6 : 0; i < std::min(done + 3, n->BreadcrumbCount); i++)
+                    LOGE("  %s %4u %s", i == done ? ">" : " ", i, BreadcrumbName(n->pCommandHistory[i]));
+            }
+        D3D12_DRED_PAGE_FAULT_OUTPUT f{};
+        if (SUCCEEDED(d->GetPageFaultAllocationOutput(&f)) && f.PageFaultVA) {
+            LOGE("  page fault at GPU address %llX", (unsigned long long)f.PageFaultVA);
+            int shown = 0;
+            for (auto* a = f.pHeadExistingAllocationNode; a && shown < 8; a = a->pNext, shown++)
+                LOGE("    near %ls (live)", a->ObjectNameW ? a->ObjectNameW : L"unnamed");
+            for (auto* a = f.pHeadRecentFreedAllocationNode; a && shown < 16; a = a->pNext, shown++)
+                LOGE("    near %ls (freed)", a->ObjectNameW ? a->ObjectNameW : L"unnamed");
+        }
+    }
+    logx::Flush();
+    std::abort();
+}
+
 class D3D12Backend final : public Backend, public Context {
 public:
     bool Init(uint32_t width, uint32_t height) override;
@@ -816,6 +870,7 @@ bool D3D12Backend::CreateDevice() {
         ComPtr<ID3D12Debug> dbg;
         if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&dbg)))) dbg->EnableDebugLayer();
     }
+    EnableDred();
     if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&factory_)))) return false;
     // dedicated GPU first on hybrid laptops
     ComPtr<IDXGIFactory6> f6;
@@ -3168,7 +3223,7 @@ void D3D12Backend::Present(const Surface& front) {
     DeliverReports();
     bool vsync = app::Get().vsync;
     auto perf_swap = PerfClock::now();
-    swap_->Present(vsync ? 1 : 0, !vsync && tearing_ ? DXGI_PRESENT_ALLOW_TEARING : 0);
+    CheckPresent(dev_.Get(), swap_->Present(vsync ? 1 : 0, !vsync && tearing_ ? DXGI_PRESENT_ALLOW_TEARING : 0));
     g_perf.swap += PerfMs(perf_swap);
 
     presents_++;
@@ -3416,7 +3471,7 @@ void D3D12Backend::PresentHeld() {
     Submit(false);
     bool vsync = app::Get().vsync;
     auto perf_swap = PerfClock::now();
-    swap_->Present(vsync ? 1 : 0, !vsync && tearing_ ? DXGI_PRESENT_ALLOW_TEARING : 0);
+    CheckPresent(dev_.Get(), swap_->Present(vsync ? 1 : 0, !vsync && tearing_ ? DXGI_PRESENT_ALLOW_TEARING : 0));
     g_perf.swap += PerfMs(perf_swap);
     frame_++;
     ResetFrame();
