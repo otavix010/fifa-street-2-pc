@@ -20,6 +20,7 @@ CDevice_SwapCount     = 0x2478  # D3DDevice_Swap 0x49CCB0 increments it, 0x49CD2
 CDevice_Size          = 0x24A0  # Direct3D_CreateDevice 0x49D28B clears 0x928 dwords of the device on failure
 CDevice_Flags             = 0x8    # Direct3D_CreateDevice 0x49D263 ors BehaviorFlags & 0x10 into it (0x4AB678), D3DDevice_SetPixelShader 0x4A5DB1 tests that bit
 CDevice_Time              = 0x2C   # D3D_KickOffAndWaitForIdle 0x4A17A5 passes it to D3D_BlockOnTime, D3D_SetFence 0x4A1475 adds 2
+CDevice_Reports           = 0x7D4  # visibility test reports: D3DDevice_GetVisibilityTestResult (FIFA Street 2 0x28F0B5) reads table [index >> 8], 16 byte report [index & 0xFF]
 CDevice_PixelShader       = 0x784  # D3DDevice_SetPixelShader 0x4A5CE8 stores the handle
 CDevice_VertexShader      = 0x794  # the device init 0x4A261B stores the FVF shader object 0x4ADCE8, D3DDevice_SetVertexShader 0x49EEAE the current one
 CDevice_BackBufferScale   = 0x96C  # the frame buffer init 0x4A1D4B stores the X scale as a float, 0x4A1D64 the Y scale at +4

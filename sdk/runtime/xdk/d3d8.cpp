@@ -450,6 +450,40 @@ HLE_STDCALL(D3D_SetFence, 1) {
     std::lock_guard<std::recursive_mutex> lock(g_lock);
     return g_backend ? g_backend->Fence() : 0;
 }
+// GetVisibilityTestResult(index, result, time): the 16 byte report EndVisibilityTest asked the GPU for, from the
+// device's tables of 256, D3DERR_TESTINCOMPLETE until it is written. The renderer hands the frame's work to the GPU
+// and writes the reports at present, so a title waiting for one inside the frame waited forever (FIFA Street 2 spins
+// on one when a gamebreaker shot starts): a pending report asked for again and again sends the work so far to the
+// GPU and waits for it. A title asking once a frame never gets there.
+HLE_STDCALL(D3DDevice_GetVisibilityTestResult, 3) {
+    constexpr uint32_t kTestIncomplete = 0x88760828;
+    constexpr uint32_t kCount = 8, kStatus = 12, kPending = 0xFFFFFFFF;  // EndVisibilityTest marks the status pending
+    constexpr uint32_t kAsksBeforeFlush = 32;
+    if (XDK_CDevice_Reports == xdk::kUnknown) {
+        LOG_FIRST(1, "d3d: GetVisibilityTestResult needs CDevice_Reports in the XDK layout");
+        return kTestIncomplete;
+    }
+    uint32_t index = a[0];
+    uint32_t report = Dev(XDK_CDevice_Reports + (index >> 8) * 4) + (index & 0xFF) * 16;
+    if (R32(report + kStatus) == kPending) {
+        static uint32_t waited = 0, asks = 0;
+        asks = report == waited ? asks + 1 : 1;
+        waited = report;
+        if (asks < kAsksBeforeFlush) return kTestIncomplete;
+        {
+            std::lock_guard<std::recursive_mutex> lock(g_lock);
+            if (g_backend) g_backend->Flush();
+        }
+        if (R32(report + kStatus) == kPending) return kTestIncomplete;
+        LOG_FIRST(4, "d3d: visibility test %X waited for inside the frame, delivered by a flush", index);
+    }
+    if (a[1]) W32(a[1], R32(report + kCount));
+    if (a[2]) {
+        W32(a[2], R32(report));
+        W32(a[2] + 4, R32(report + 4));
+    }
+    return 0;
+}
 HLE_STDCALL(D3D_KickOffAndWaitForIdle, 0) {
     std::lock_guard<std::recursive_mutex> lock(g_lock);
     if (g_backend) g_backend->Flush();

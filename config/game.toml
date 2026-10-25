@@ -82,6 +82,7 @@ D3DDevice_EnableOverlay                              = 0
 D3DDevice_End                                        = 0x294340
 D3DDevice_EndPush                                    = 0x293310  # stores the push pointer in the device; EA's quad renderer 0x1978A0 calls it
 D3DDevice_FlushVertexCache                           = 0x290070
+D3DDevice_GetVisibilityTestResult                    = 0x28F0A0  # report table [index >> 8] at device + 0x7D4; the gamebreaker shot spins on it
 D3DDevice_GetBackBuffer2                             = 0x28F6A0
 D3DDevice_GetDepthStencilSurface2                    = 0x28FA20
 D3DDevice_GetRenderTarget2                           = 0

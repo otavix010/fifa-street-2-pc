@@ -87,6 +87,9 @@ constexpr bool AllKnown(const LayoutKey (&keys)[N]) {
 #ifndef XDK_CDevice_Flags
 #define XDK_CDevice_Flags 0xFFFFFFFFu
 #endif
+#ifndef XDK_CDevice_Reports
+#define XDK_CDevice_Reports 0xFFFFFFFFu
+#endif
 #ifndef XDK_CDevice_Time
 #define XDK_CDevice_Time 0xFFFFFFFFu
 #endif
