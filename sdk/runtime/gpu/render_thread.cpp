@@ -491,7 +491,7 @@ private:
     // the draw of the frame before this one is: same signature near the same place, the closest constants
     // cursor: where the last match put this frame's draws in the frame before, offset from the draw's own index
     const DrawSnap* Match(const DrawSnap& cur, size_t index, ptrdiff_t& offset) const {
-        constexpr ptrdiff_t kBack = 16, kAhead = 32;
+        constexpr ptrdiff_t kBack = 16, kAhead = 32, kNear = 3;
         ptrdiff_t center = ptrdiff_t(index) + offset;
         size_t from = size_t(std::max<ptrdiff_t>(0, center - kBack));
         size_t to = size_t(std::clamp<ptrdiff_t>(center + kAhead, 0, ptrdiff_t(prev_snaps_.size())));
@@ -504,6 +504,10 @@ private:
             float d = 0;
             for (size_t r = 0; r < p.vsc.size(); r++)
                 for (int i = 0; i < 4; i++) d += std::fabs(p.vsc[r][i] - cur.vsc[r][i]);
+            // away from where the draw order puts it, only an identical draw (nothing to move): a lookalike elsewhere on
+            // the screen would pull it halfway there (the editor's selection box matched the tab's, the same sprite,
+            // and the in-between pictures showed it between the two)
+            if (d > 0 && std::abs(ptrdiff_t(k) - center) > kNear) continue;
             if (!best || d < best_d) {
                 best = &p;
                 best_d = d;
@@ -568,6 +572,19 @@ private:
         stat_matched_ += uint32_t(matched);
     }
 
+    // the presented surface is drawn, cleared or copied to by this frame's commands; else the picture reached it some
+    // other way (written by the CPU, a read-back put back) and a replay would show what the surface held before: the
+    // character editor's tattoo pages showed the skin colour page from earlier in the in-between pictures
+    bool FrameDrawsTo(const Surface& front) const {
+        State rs = frame_start_;
+        for (const Cmd& c : log_cmds_) {
+            if (c.op == Op::State) ApplyDelta(rs, log_bytes_.data() + c.data, c.size);
+            else if ((c.op == Op::Draw || c.op == Op::Clear) && rs.rt.data == front.data) return true;
+            else if (c.op == Op::Copy && c.s2.data == front.data) return true;
+        }
+        return false;
+    }
+
     void EndFrameLog() {
         normal_offset_ = 0;
         prev_parts_.swap(cur_parts_);
@@ -596,7 +613,9 @@ private:
         last_present_at_ = now;
         if (since > 0 && since < 100) period_ms_ += (since - period_ms_) * 0.1;
         bool steady = since > 8 && since < 40 && period_ms_ > 8 && period_ms_ < 40;
-        if (app::Get().interp && frame_open_ && steady && !prev_snaps_.empty() && inner_->BeginReplay(c.s1)) {
+        bool drawn = app::Get().interp && frame_open_ && FrameDrawsTo(c.s1);
+        if (app::Get().interp && frame_open_ && !drawn) LOG_FIRST(4, "interp: the frame is not drawn to the surface it shows, no in-between picture");
+        if (drawn && steady && !prev_snaps_.empty() && inner_->BeginReplay(c.s1)) {
             Replay();
             inner_->EndReplay();
             inner_->Present(c.s1);
