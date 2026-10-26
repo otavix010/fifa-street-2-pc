@@ -26,6 +26,40 @@ namespace {
 
 namespace fs = std::filesystem;
 
+// the title in an xbe's certificate (UTF-16, 40 characters at +0x0C), empty when the header does not hold one
+std::wstring XbeTitle(const std::vector<uint8_t>& xbe)
+{
+    auto u32 = [&](size_t at) {
+        return at + 4 <= xbe.size() ? uint32_t(xbe[at]) | uint32_t(xbe[at + 1]) << 8 | uint32_t(xbe[at + 2]) << 16 |
+                                          uint32_t(xbe[at + 3]) << 24
+                                    : 0u;
+    };
+    if (xbe.size() < 0x178 || u32(0) != 0x48454258u) return {};  // "XBEH"
+    const uint32_t base = u32(0x104), cert = u32(0x118);
+    if (cert < base) return {};
+    const size_t at = size_t(cert - base) + 0x0C;
+    if (at + 80 > xbe.size()) return {};
+    std::wstring t;
+    for (size_t i = 0; i < 40; i++) {
+        const wchar_t c = wchar_t(xbe[at + i * 2] | xbe[at + i * 2 + 1] << 8);
+        if (!c) break;
+        t += c;
+    }
+    return t;
+}
+
+// two titles of the same game: compared on letters and digits only, in lower case ("FIFA Street 2" and "FIFA STREET 2")
+bool SameTitle(const std::wstring& a, const std::wstring& b)
+{
+    auto squash = [](const std::wstring& s) {
+        std::wstring o;
+        for (wchar_t c : s)
+            if (std::iswalnum(c)) o += wchar_t(std::towlower(c));
+        return o;
+    };
+    return squash(a) == squash(b);
+}
+
 // the settings' game_path (a folder, or a disc image's folder), else assets beside the exe or in any folder above it
 // (the build output)
 fs::path FindAssets() {
@@ -127,9 +161,22 @@ bool FindGame(GameFiles& game) {
         MessageBoxW(nullptr, kGame.missing, kGame.short_title, MB_ICONERROR);
         return false;
     }
+    // another game altogether (a player of FIFA Street 2 picked the first FIFA Street's disc, the launcher's report 39,
+    // and was asked in English whether to start "a different release"): said so, and not offered
+    std::wstring other_title = XbeTitle(other.xbe);
+    LOGR("Game: %s is titled \"%ls\"", other_name.string().c_str(), other_title.c_str());
+    if (!other_title.empty() && !SameTitle(other_title, kGame.title)) {
+        std::wstring text = L"Esta imagem é de outro jogo: " + other_title + L", não " + kGame.title + L".\n\n" +
+                            other_name.filename().wstring() + L"\n\nNo Otavix Launcher, escolha a imagem do disco de " +
+                            kGame.title + L" (.iso).\n\nThis image is another game: " + other_title + L", not " +
+                            kGame.title + L". In the Otavix Launcher, pick the " + kGame.title + L" disc image (.iso).";
+        MessageBoxW(nullptr, text.c_str(), kGame.short_title, MB_ICONERROR);
+        return false;
+    }
     std::wstring text = other_name.filename().wstring() +
-                        L" is a different release of the game than this build was made from, and will most likely "
-                        L"crash.\n\nStart it anyway?";
+                        L"\n\nEsta é outra versão do jogo, diferente da usada neste port, e o mais provável é que ele "
+                        L"feche. Abrir mesmo assim?\n\nThis is a different release of the game than this build was made "
+                        L"from, and will most likely crash. Start it anyway?";
     if (MessageBoxW(nullptr, text.c_str(), kGame.short_title, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2) != IDYES) return false;
     game = std::move(other);
     kernel::MountDisc(std::move(other_disc));
