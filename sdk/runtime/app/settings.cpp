@@ -48,6 +48,7 @@ void Load() {
     s.render_percent = t["render_percent"].value_or(s.render_percent);
     s.fps_cap = t["fps_cap"].value_or(s.fps_cap);
     s.vsync = t["vsync"].value_or(s.vsync);
+    s.vrr = t["vrr"].value_or(s.vrr);
     s.aniso = t["anisotropic_filtering"].value_or(s.aniso);
     s.interp = t["frame_interpolation"].value_or(s.interp);
     s.language = t["language"].value_or(s.language);
@@ -80,6 +81,7 @@ toml::table Table() {
                   {"render_percent", int64_t(s.render_percent)},
                   {"fps_cap", int64_t(s.fps_cap)},
                   {"vsync", s.vsync},
+                  {"vrr", s.vrr},
                   {"anisotropic_filtering", int64_t(s.aniso)},
                   {"frame_interpolation", s.interp},
                   {"language", int64_t(s.language)},

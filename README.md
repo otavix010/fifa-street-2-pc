@@ -16,7 +16,7 @@ gráficos e opções de PC.
 - **Widescreen nativo** e qualquer resolução, até 4K e além.
 - **Anti-aliasing temporal** com **DLSS** (NVIDIA RTX), **FSR** (qualquer placa) ou **XeSS**, com vetores de movimento
   e profundidade reais do jogo.
-- Filtro anisotrópico, V-sync, janela, sem bordas ou tela cheia.
+- Filtro anisotrópico, VRR (G-SYNC / FreeSync), V-sync, janela, sem bordas ou tela cheia.
 - Controles de Xbox, PlayStation e Switch, com troca de botões e zona morta.
 - Medidor de desempenho igual ao dos outros ports Otavix (fps, CPU, GPU e memória, nítido em qualquer resolução):
   liga em Configurações > Desempenho no launcher, e o F10 mostra ou esconde durante o jogo.

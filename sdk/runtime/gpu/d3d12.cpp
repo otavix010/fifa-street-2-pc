@@ -624,6 +624,7 @@ private:
     void DrawFrame(Target* t, uint32_t bi);
     void BlitFrame(Target& t);
     void RenderUi();
+    HRESULT SwapPresent();
     void ReleaseOldTextures();
     void ResetFrame();
     void CountFps();
@@ -3101,6 +3102,13 @@ void D3D12Backend::DrawFrame(Target* t, uint32_t bi) {
     Transition(bb_[bi].Get(), bs, D3D12_RESOURCE_STATE_PRESENT);
 }
 
+// vrr: up as soon as it is ready, the pacing is the game's (app::Pace) and the in-between frame's own timer; a
+// variable refresh display follows, any other may tear. Off, vsync waits for the screen.
+HRESULT D3D12Backend::SwapPresent() {
+    bool wait = !app::Get().vrr && app::Get().vsync;
+    return swap_->Present(wait ? 1 : 0, !wait && tearing_ ? DXGI_PRESENT_ALLOW_TEARING : 0);
+}
+
 void D3D12Backend::ReleaseOldTextures() {
     constexpr uint64_t kSweepEvery = 60;    // presents between sweeps
     constexpr size_t kTexturesKept = 2048;  // no sweep below this many
@@ -3225,9 +3233,8 @@ void D3D12Backend::Present(const Surface& front) {
     DrawFrame(shown, bi);
     Submit(false);
     DeliverReports();
-    bool vsync = app::Get().vsync;
     auto perf_swap = PerfClock::now();
-    CheckPresent(dev_.Get(), swap_->Present(vsync ? 1 : 0, !vsync && tearing_ ? DXGI_PRESENT_ALLOW_TEARING : 0));
+    CheckPresent(dev_.Get(), SwapPresent());
     g_perf.swap += PerfMs(perf_swap);
 
     presents_++;
@@ -3473,9 +3480,8 @@ void D3D12Backend::PresentHeld() {
     uint32_t bi = swap_->GetCurrentBackBufferIndex();
     DrawFrame(shown, bi);
     Submit(false);
-    bool vsync = app::Get().vsync;
     auto perf_swap = PerfClock::now();
-    CheckPresent(dev_.Get(), swap_->Present(vsync ? 1 : 0, !vsync && tearing_ ? DXGI_PRESENT_ALLOW_TEARING : 0));
+    CheckPresent(dev_.Get(), SwapPresent());
     g_perf.swap += PerfMs(perf_swap);
     frame_++;
     ResetFrame();

@@ -23,6 +23,8 @@ struct Settings {
     uint32_t render_percent = 100;   // of the output height
     uint32_t fps_cap = 60;           // 0 unlimited, kFpsCapRefresh the monitor's refresh rate
     bool vsync = true;
+    bool vrr = true;                 // variable refresh (G-SYNC / FreeSync): each frame up as soon as it is ready,
+                                     // without waiting for the screen; vsync only counts with it off
     uint32_t aniso = 0;              // 0 as the game asks
     bool interp = false;             // frame interpolation: a frame drawn halfway between each two of the game's
     uint32_t language = 1;           // the console's XC_LANGUAGE: 1 English, 2 Japanese, 3 German, 4 French, 5 Spanish,
