@@ -1,6 +1,7 @@
 // The performance meter, the Otavix ports' standard (otavix_osd.c, the same in every port: one line in a window of its
-// own over the game's, sized for 1080 lines whatever the internal resolution). OTAVIX_OSD=1 (the launcher's Settings >
-// Performance) turns it on, F10 shows or hides it:
+// own over the game's, sized for 1080 lines whatever the internal resolution). F10 shows or hides it, whatever the
+// options (reports 307, 327: with the launcher's option off it did nothing); OTAVIX_OSD=1 (the launcher's Settings >
+// Performance) shows it from the start:
 //   "FPS 120.0 8.3 ms   CPU 31% 65°C   GPU 40% 60°C   VRAM 1.2/16.0 GB   RAM 15.4/31.9 GB"
 // The frame rate is the runtime's count of presents, the in-between frames included; a temperature Windows does not
 // give is left out.
@@ -25,7 +26,7 @@ namespace game {
 
 namespace {
 
-std::atomic<bool> g_shown{true};
+std::atomic<bool> g_shown{false};
 std::atomic<bool> g_toggled{false};
 
 bool Wanted() {
@@ -41,7 +42,7 @@ bool Wanted() {
 // window thread; F10 is a system key, and its default handling would put the window in menu mode, so its messages
 // stop here
 bool OsdMessage(void*, uint32_t msg, uintptr_t wp, intptr_t lp, intptr_t* result) {
-    if (!Wanted() || wp != VK_F10) return false;
+    if (wp != VK_F10) return false;
     if (msg != WM_SYSKEYDOWN && msg != WM_SYSKEYUP && msg != WM_KEYDOWN && msg != WM_KEYUP) return false;
     if ((msg == WM_SYSKEYDOWN || msg == WM_KEYDOWN) && !(lp & (1 << 30))) {  // bit 30: auto-repeat
         g_shown = !g_shown;
@@ -53,9 +54,9 @@ bool OsdMessage(void*, uint32_t msg, uintptr_t wp, intptr_t lp, intptr_t* result
 
 // renderer, each frame
 void OsdUi(double fps) {
-    if (!Wanted()) return;
     using Clock = std::chrono::steady_clock;
     static const bool started = [] {
+        g_shown = Wanted();
         otx_osd_iniciar();
         return true;
     }();
