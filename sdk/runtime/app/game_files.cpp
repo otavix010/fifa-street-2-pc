@@ -9,6 +9,7 @@
 #include <windows.h>
 
 #include <algorithm>
+#include <cstring>
 #include <cwctype>
 #include <fstream>
 
@@ -68,7 +69,7 @@ fs::path FindAssets() {
         fs::path p = fs::u8path(Get().game_path);
         if (fs::is_directory(p, ec)) return p;
         if (fs::is_regular_file(p, ec)) return p.parent_path();
-        LOGW("game: game_path %s is not there", Get().game_path.c_str());
+        LOGR("game: game_path %s is not there", Get().game_path.c_str());
     }
     auto dir = ExeDir();
     for (int i = 0; i < 6; i++) {
@@ -142,23 +143,33 @@ bool FindGame(GameFiles& game) {
     };
 
     std::vector<uint8_t> xbe;
+    std::wstring why;
     if (!assets.empty() && ReadHostFile(assets / IMAGE_XBE, xbe) && consider(assets, std::move(xbe), nullptr)) return true;
     for (const fs::path& iso : isos) {
         auto disc = std::make_unique<kernel::Disc>();
         std::string error;
+        // in the release log and in the message: a release build drops warnings, and report 406 came with no reason
         if (!disc->Open(iso, error)) {
-            LOGW("game: %s: %s", iso.string().c_str(), error.c_str());
+            LOGR("game: %s: %s", iso.string().c_str(), error.c_str());
+            if (why.empty()) why = iso.filename().wstring() + L": " + std::wstring(error.begin(), error.end());
             continue;
         }
         if (!disc->Load(IMAGE_XBE, xbe)) {
-            LOGW("game: %s has no %s", iso.string().c_str(), IMAGE_XBE);
+            LOGR("game: %s has no %s", iso.string().c_str(), IMAGE_XBE);
+            if (why.empty()) {
+                std::string name = IMAGE_XBE;
+                why = iso.filename().wstring() + L": no " + std::wstring(name.begin(), name.end());
+            }
             continue;
         }
         if (consider(iso, std::move(xbe), std::move(disc))) return true;
     }
 
     if (other_name.empty()) {
-        MessageBoxW(nullptr, kGame.missing, kGame.short_title, MB_ICONERROR);
+        LOGR("game: no copy found (assets %s, %zu disc images)", assets.string().c_str(), isos.size());
+        std::wstring text = kGame.missing;
+        if (!why.empty()) text += L"\n\n" + why;
+        MessageBoxW(nullptr, text.c_str(), kGame.short_title, MB_ICONERROR);
         return false;
     }
     // another game altogether (a player of FIFA Street 2 picked the first FIFA Street's disc, the launcher's report 39,

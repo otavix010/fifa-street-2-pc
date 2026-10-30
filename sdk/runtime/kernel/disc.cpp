@@ -79,14 +79,22 @@ uint32_t Disc::ReadAt(uint64_t at, void* out, uint32_t len) const {
 bool Disc::Open(const std::filesystem::path& path, std::string& error) {
     path_ = path;
 #ifdef _WIN32
-    file_ = intptr_t(CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr));
+    // shared for writing too: a torrent client still seeding the image holds it open with write access (report 406)
+    file_ = intptr_t(CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
+                                 OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr));
+    if (file_ == -1) {
+        DWORD e = GetLastError();
+        error = e == ERROR_SHARING_VIOLATION ? "another program has the file open (error 32)"
+                                             : "cannot open the file (error " + std::to_string(e) + ")";
+        return false;
+    }
 #else
     file_ = open(path.c_str(), O_RDONLY);
-#endif
     if (file_ == -1) {
         error = "cannot open the file";
         return false;
     }
+#endif
     for (uint64_t base : kPartitions) {
         uint8_t volume[kSector];
         if (ReadAt(base + kVolume, volume, kSector) != kSector || std::memcmp(volume, kMagic, kMagicSize) != 0 ||
