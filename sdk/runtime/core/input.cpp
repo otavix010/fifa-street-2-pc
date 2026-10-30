@@ -6,6 +6,7 @@
 #include <cmath>
 #include <iterator>
 #include <mutex>
+#include <string>
 #include <utility>
 
 #include <SDL3/SDL.h>
@@ -29,7 +30,7 @@ void AddPad(SDL_JoystickID id) {
     if (slot == std::end(g_pads)) return;
     *slot = SDL_OpenGamepad(id);
     const char* name = *slot ? SDL_GetGamepadName(*slot) : SDL_GetError();
-    LOGI("input: controller %d %s: %s", int(slot - g_pads) + 1, *slot ? "plugged in" : "failed to open", name ? name : "");
+    LOGR("input: controller %d %s: %s", int(slot - g_pads) + 1, *slot ? "plugged in" : "failed to open", name ? name : "");
 }
 
 void RemovePad(SDL_JoystickID id) {
@@ -37,8 +38,70 @@ void RemovePad(SDL_JoystickID id) {
         if (!g_pads[i] || SDL_GetGamepadID(g_pads[i]) != id) continue;
         SDL_CloseGamepad(g_pads[i]);
         g_pads[i] = nullptr;
-        LOGI("input: controller %d unplugged", i + 1);
+        LOGR("input: controller %d unplugged", i + 1);
     }
+}
+
+bool AnyPad() {
+    for (SDL_Gamepad* pad : g_pads)
+        if (pad) return true;
+    return false;
+}
+
+// A generic pad Windows lists but SDL has no mapping for (a plain DirectInput pad): the usual layout of those, if it has
+// the buttons and axes for it, so that it works instead of being ignored
+void MapGenericPads() {
+    int count = 0;
+    SDL_JoystickID* ids = SDL_GetJoysticks(&count);
+    if (!ids) return;
+    for (int i = 0; i < count; i++) {
+        SDL_JoystickID id = ids[i];
+        const char* name = SDL_GetJoystickNameForID(id);
+        SDL_GUID guid = SDL_GetJoystickGUIDForID(id);
+        char text[64];
+        SDL_GUIDToString(guid, text, sizeof(text));
+        bool mapped = SDL_IsGamepad(id);
+        LOGR("input: joystick %s (vid %04x pid %04x): %s", name ? name : "?", SDL_GetJoystickVendorForID(id),
+             SDL_GetJoystickProductForID(id), mapped ? "has a mapping" : "no mapping");
+        if (mapped) continue;
+        SDL_Joystick* joy = SDL_OpenJoystick(id);
+        if (!joy) continue;
+        int buttons = SDL_GetNumJoystickButtons(joy), axes = SDL_GetNumJoystickAxes(joy);
+        SDL_CloseJoystick(joy);
+        if (buttons < 10 || axes < 4) continue;
+        std::string map = std::string(text) + "," + (name ? name : "Generic pad") +
+                          ",a:b0,b:b1,x:b2,y:b3,leftshoulder:b4,rightshoulder:b5,lefttrigger:b6,righttrigger:b7,back:b8,start:b9,"
+                          "leftstick:b10,rightstick:b11,dpup:h0.1,dpright:h0.2,dpdown:h0.4,dpleft:h0.8,leftx:a0,lefty:a1,"
+                          "rightx:a2,righty:a3";
+        if (SDL_AddGamepadMapping(map.c_str()) >= 0) {
+            LOGR("input: generic mapping for %s", name ? name : "?");
+            AddPad(id);
+        }
+    }
+    SDL_free(ids);
+}
+
+// No pad taken a few seconds in: DirectInput and the raw input are turned on and the list is made again, so that a
+// generic pad shows up (they stay off while a pad works, two readers of one Xbox pad would be two players)
+void RetryWithDirectInput() {
+    static bool tried = false;
+    static uint64_t since = SDL_GetTicks();
+    if (tried || AnyPad() || SDL_GetTicks() - since < 6000) return;
+    tried = true;
+    SDL_SetHint(SDL_HINT_JOYSTICK_DIRECTINPUT, "1");
+    SDL_SetHint(SDL_HINT_JOYSTICK_RAWINPUT, "1");
+    SDL_QuitSubSystem(SDL_INIT_GAMEPAD);
+    if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD)) {
+        LOGR("input: SDL did not start again: %s", SDL_GetError());
+        return;
+    }
+    LOGR("input: no controller after 6 s, looking again with DirectInput");
+    int count = 0;
+    if (SDL_JoystickID* ids = SDL_GetGamepads(&count)) {
+        for (int i = 0; i < count; i++) AddPad(ids[i]);
+        SDL_free(ids);
+    }
+    MapGenericPads();
 }
 
 // once a millisecond at most, however many ports and threads read
@@ -53,6 +116,7 @@ void UpdatePads() {
         if (e.type == SDL_EVENT_GAMEPAD_ADDED) AddPad(e.gdevice.which);
         else if (e.type == SDL_EVENT_GAMEPAD_REMOVED) RemovePad(e.gdevice.which);
     }
+    RetryWithDirectInput();
 }
 
 }  // namespace
@@ -72,7 +136,7 @@ void Init() {
         return;
     }
     int v = SDL_GetVersion();
-    LOGI("input: SDL %d.%d.%d", SDL_VERSIONNUM_MAJOR(v), SDL_VERSIONNUM_MINOR(v), SDL_VERSIONNUM_MICRO(v));
+    LOGR("input: SDL %d.%d.%d", SDL_VERSIONNUM_MAJOR(v), SDL_VERSIONNUM_MINOR(v), SDL_VERSIONNUM_MICRO(v));
     std::lock_guard lock(g_lock);
     g_sdl = true;
     int count = 0;
