@@ -16,6 +16,7 @@ const app::GameInfo app::kGame = {
     .settings = "settings.toml",              // settings file beside the exe
     .splash = L"splash",                      // optional splash.png or splash.bmp beside the exe
     .missing = L"Coloque o jogo na pasta assets: a imagem do disco (.iso), ou o default.xbe com a pasta data ao lado.",
+    .release = L"USA, NTSC-U",               // the disc the xbe came from: the message about another release
     .images = {{"default.xbe", "FIFAStreet2"}},  // each recompiled xbe and its exe, for title launches
     .options = {},                            // game settings kept in the settings file
     .load = nullptr,                          // reads more from the settings file's toml::table

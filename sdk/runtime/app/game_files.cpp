@@ -49,6 +49,26 @@ std::wstring XbeTitle(const std::vector<uint8_t>& xbe)
     return t;
 }
 
+// the regions in an xbe's certificate (+0xA0: 1 North America, 2 Japan, 4 the rest of the world), for the message
+// about another release (report 494 picked a European disc)
+std::wstring XbeRegion(const std::vector<uint8_t>& xbe)
+{
+    auto u32 = [&](size_t at) {
+        return at + 4 <= xbe.size() ? uint32_t(xbe[at]) | uint32_t(xbe[at + 1]) << 8 | uint32_t(xbe[at + 2]) << 16 |
+                                          uint32_t(xbe[at + 3]) << 24
+                                    : 0u;
+    };
+    if (xbe.size() < 0x178 || u32(0) != 0x48454258u) return {};
+    const uint32_t base = u32(0x104), cert = u32(0x118);
+    if (cert < base) return {};
+    const uint32_t regions = u32(size_t(cert - base) + 0xA0);
+    std::wstring r;
+    if (regions & 1) r += L"NTSC-U";
+    if (regions & 2) r += r.empty() ? L"NTSC-J" : L"/NTSC-J";
+    if (regions & 4) r += r.empty() ? L"PAL" : L"/PAL";
+    return r;
+}
+
 // two titles of the same game: compared on letters and digits only, in lower case ("FIFA Street 2" and "FIFA STREET 2")
 bool SameTitle(const std::wstring& a, const std::wstring& b)
 {
@@ -184,10 +204,14 @@ bool FindGame(GameFiles& game) {
         MessageBoxW(nullptr, text.c_str(), kGame.short_title, MB_ICONERROR);
         return false;
     }
-    std::wstring text = other_name.filename().wstring() +
-                        L"\n\nEsta é outra versão do jogo, diferente da usada neste port, e o mais provável é que ele "
-                        L"feche. Abrir mesmo assim?\n\nThis is a different release of the game than this build was made "
-                        L"from, and will most likely crash. Start it anyway?";
+    const std::wstring region = XbeRegion(other.xbe);
+    LOGR("Game: %s is for %ls", other_name.string().c_str(), region.c_str());
+    std::wstring where = region.empty() ? L"" : L" (" + region + L")";
+    std::wstring text = other_name.filename().wstring() + L"\n\nEsta é outra versão do jogo" + where +
+                        L", diferente da usada neste port (" + kGame.release + L"), e o mais provável é que ele "
+                        L"feche. Abrir mesmo assim?\n\nThis is a different release of the game" + where +
+                        L" than this build was made from (" + kGame.release + L"), and will most likely crash. Start it "
+                        L"anyway?";
     if (MessageBoxW(nullptr, text.c_str(), kGame.short_title, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2) != IDYES) return false;
     game = std::move(other);
     kernel::MountDisc(std::move(other_disc));

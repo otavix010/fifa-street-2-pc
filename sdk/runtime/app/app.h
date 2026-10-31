@@ -103,6 +103,7 @@ struct GameInfo {
     const char* settings;        // settings file beside the exe
     const wchar_t* splash;       // .bmp or .png beside the exe
     const wchar_t* missing;      // message when neither the game files nor a disc image are found
+    const wchar_t* release;      // the disc this build was made from, for the message about another release
     std::vector<std::pair<const char*, const char*>> images;  // xbe file name, executable name
     std::vector<Option> options;
     // the settings file's toml::table, for what options cannot hold

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
 #include <cstring>
 
 #ifdef _WIN32
@@ -112,7 +113,22 @@ bool Disc::Open(const std::filesystem::path& path, std::string& error) {
         }
         return true;
     }
-    error = "no Xbox disc image";
+    // what the file is instead, for the log and the message (report 494: a European image no partition matched)
+    uint8_t head[8]{};
+    ReadAt(0, head, sizeof head);
+    std::error_code ec;
+    const uint64_t size = std::filesystem::file_size(path, ec);
+    const char* kind = std::memcmp(head, "CCIM", 4) == 0                ? "a compressed image (CCI), extract it to .iso"
+                       : std::memcmp(head, "CISO", 4) == 0              ? "a compressed image (CSO), extract it to .iso"
+                       : std::memcmp(head, "PK\x03\x04", 4) == 0        ? "a zip archive, extract the .iso from it"
+                       : std::memcmp(head, "Rar!", 4) == 0              ? "a rar archive, extract the .iso from it"
+                       : std::memcmp(head, "7z\xBC\xAF\x27\x1C", 6) == 0 ? "a 7z archive, extract the .iso from it"
+                       : size < (64u << 20) ? "too small for a disc, perhaps an unfinished download"
+                           : "no Xbox disc image (Xbox 360 or another console's, or a damaged download)";
+    char text[192];
+    std::snprintf(text, sizeof text, "%s, %.1f MB, starts %02X %02X %02X %02X", kind, size / 1048576.0, head[0], head[1],
+                  head[2], head[3]);
+    error = text;
     return false;
 }
 

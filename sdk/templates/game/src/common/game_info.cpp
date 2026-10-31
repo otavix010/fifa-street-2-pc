@@ -9,6 +9,7 @@ const app::GameInfo app::kGame = {
     .settings = "settings.toml",          // settings file beside the exe
     .splash = L"splash",                  // optional splash.png or splash.bmp beside the exe
     .missing = L"Put the game in the assets folder: its disc image (.iso), or default.xbe with its folders beside it.",
+    .release = L"the release the xbe came from",  // the message about another release
     .images = {{"default.xbe", "Game"}},  // each recompiled xbe and its exe, for title launches
     .options = {},                        // game settings kept in the settings file
     .load = nullptr,                      // reads more from the settings file's toml::table
