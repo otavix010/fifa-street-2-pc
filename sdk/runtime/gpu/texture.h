@@ -40,6 +40,9 @@ uint32_t TotalSize(const TextureDesc& d);
 // converts one level (one face) from guest memory into what Host describes, rows tightly packed
 void DecodeLevel(const TextureDesc& d, uint32_t level, uint32_t face, const uint8_t* guest, const uint32_t* palette,
                  std::vector<uint8_t>& out, uint32_t& row_pitch);
+// the other way for level 0 of a colour surface: BGRA rows into guest memory in its format and layout, false for a
+// format it does not write (8 bit, compressed, depth)
+bool EncodeLevel(const TextureDesc& d, const uint8_t* bgra, uint32_t row_pitch, uint8_t* guest);
 
 uint32_t LinearColorFormat(uint32_t fmt);
 uint32_t LinearDepthFormat(uint32_t fmt);

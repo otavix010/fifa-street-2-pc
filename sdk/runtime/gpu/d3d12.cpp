@@ -245,6 +245,10 @@ uint8_t ShadowDepthKind(uint32_t format) { return format == kFmtD16 || format ==
 // bytes per row of a 32 bit surface in guest memory, rounded to 64
 uint32_t GuestPitch(uint32_t width) { return (width * 4 + 63) & ~63u; }
 
+// a colour target the console keeps 32 bit linear, GuestPitch apart; the others (16 bit, swizzled) go through
+// EncodeLevel, as FIFA Street 2's pitch editor reads back its R5G6B5 composite
+bool Linear32(const Target& t) { return Format(t.guest.format).bits == 32 && t.guest.linear; }
+
 // rows of a texture upload start D3D12_TEXTURE_DATA_PITCH_ALIGNMENT apart
 uint32_t UploadPitch(uint32_t row_bytes) { return (row_bytes + 255) & ~255u; }
 
@@ -771,6 +775,7 @@ private:
         uint32_t gh = 0;
         uint32_t row_pitch = 0;
         uint32_t next = 0;
+        TextureDesc guest;  // the target's console surface, as RecordLate saw it
     };
     std::unordered_map<uint32_t, Late> late_;
     std::mutex late_lock_;                      // DeliverLate runs on the title's thread
@@ -1217,7 +1222,16 @@ Target* D3D12Backend::EnsureTarget(const Surface& s, bool depth) {
     // an empty pool drops the new resource with t
     if (!CreateTargetView(t)) return nullptr;
     t.data = slot.data;
+    if (!Describe(s.header, t.guest)) {
+        t.guest = {.data = slot.data, .format = 0x12, .width = slot.gw, .height = slot.gh, .pitch = GuestPitch(slot.gw),
+                   .linear = true};
+    }
     t.bytes = GuestPitch(slot.gw) * slot.gh;
+    if (!depth && !Linear32(t)) {
+        t.bytes = LevelSize(t.guest, 0);
+        LOG_FIRST(8, "d3d12: target %08X is %s %ux%u%s in guest memory", t.data, Format(t.guest.format).name, slot.gw,
+                  slot.gh, t.guest.linear ? "" : " swizzled");
+    }
     if (depth) t.bytes = slot.gw * slot.gh * 4;
     t.epoch = DirtyEpoch(slot.data);
     t.sig = MemSig(slot.data, t.bytes);
@@ -3537,11 +3551,17 @@ void D3D12Backend::Sync(uint32_t data, uint32_t) {
     if (!src.res) return;
     std::vector<uint8_t> px;
     if (!ReadBack(src.res, t.gw, t.gh, px)) return;
-    // color targets are 32 bit linear in guest memory, the pitch rounds to 64 bytes
-    uint32_t pitch = GuestPitch(t.gw);
     uint8_t* guest = static_cast<uint8_t*>(kernel::HostPtr(data));
-    for (uint32_t y = 0; y < t.gh; y++) std::memcpy(guest + size_t(y) * pitch, &px[size_t(y) * t.gw * 4], t.gw * 4);
-    t.read = std::move(px);
+    if (Linear32(t)) {
+        // the pitch rounds to 64 bytes
+        uint32_t pitch = GuestPitch(t.gw);
+        for (uint32_t y = 0; y < t.gh; y++) std::memcpy(guest + size_t(y) * pitch, &px[size_t(y) * t.gw * 4], t.gw * 4);
+        t.read = std::move(px);
+    } else {
+        // Changed and LatchCpuChanges compare 32 bit rows: MemSig alone tells a CPU write here
+        EncodeLevel(t.guest, px.data(), t.gw * 4, guest);
+        t.read.clear();
+    }
     t.drawn = false;
     t.sig = MemSig(t.data, t.bytes);
 }
@@ -3581,9 +3601,13 @@ bool D3D12Backend::DeliverLate(uint32_t data) {
         // the last row is not padded to the pitch: a range to the end of the pitch fails to map
         D3D12_RANGE rr{0, size_t(l.row_pitch) * (l.gh - 1) + l.gw * 4};
         if (FAILED(l.rb[best]->Map(0, &rr, reinterpret_cast<void**>(&p)))) return false;
-        uint32_t pitch = GuestPitch(l.gw);
         uint8_t* dst = static_cast<uint8_t*>(kernel::HostPtr(data));
-        for (uint32_t y = 0; y < l.gh; y++) std::memcpy(dst + size_t(y) * pitch, p + size_t(y) * l.row_pitch, l.gw * 4);
+        if (Format(l.guest.format).bits == 32 && l.guest.linear) {
+            uint32_t pitch = GuestPitch(l.gw);
+            for (uint32_t y = 0; y < l.gh; y++) std::memcpy(dst + size_t(y) * pitch, p + size_t(y) * l.row_pitch, l.gw * 4);
+        } else {
+            EncodeLevel(l.guest, p, l.row_pitch, dst);
+        }
         D3D12_RANGE none{0, 0};
         l.rb[best]->Unmap(0, &none);
         l.delivered = l.fence[best];
@@ -3655,6 +3679,7 @@ void D3D12Backend::RecordLate(uint32_t data) {
         if (diag::Perf()) LOG_FIRST(16, "perf: late %08X ring reset, %ux%u -> %ux%u", data, l.gw, l.gh, t.gw, t.gh);
         ResetLate(l, t);
     }
+    l.guest = t.guest;
     // a copy for a later lock, unless the GPU is a whole ring behind
     uint32_t slot = l.next;
     if (l.fence[slot] > fence_->GetCompletedValue()) return;

@@ -393,6 +393,35 @@ void DecodeLevel(const TextureDesc& d, uint32_t level, uint32_t face, const uint
             }
 }
 
+bool EncodeLevel(const TextureDesc& d, const uint8_t* bgra, uint32_t row_pitch, uint8_t* guest) {
+    uint32_t bpp;
+    switch (d.format) {
+        case 0x06: case 0x07: case 0x12: case 0x1E: bpp = 4; break;  // BGRA in memory
+        case 0x02: case 0x03: case 0x04: case 0x05: case 0x10: case 0x11: case 0x1C: case 0x1D: bpp = 2; break;
+        default: return false;
+    }
+    uint32_t mx, my, mz;
+    SwizzleMasks(d.width, d.height, 1, mx, my, mz);
+    for (uint32_t y = 0; y < d.height; y++)
+        for (uint32_t x = 0; x < d.width; x++) {
+            const uint8_t* o = bgra + size_t(y) * row_pitch + x * 4;
+            uint8_t* p = guest + (d.linear ? size_t(y) * d.pitch + x * bpp : size_t(Deposit(x, mx) | Deposit(y, my)) * bpp);
+            if (bpp == 4) {
+                std::memcpy(p, o, 4);
+                continue;
+            }
+            uint32_t b = o[0], g = o[1], r = o[2], a = o[3];
+            uint16_t s16;
+            switch (d.format) {
+                case 0x05: case 0x11: s16 = uint16_t((r >> 3) << 11 | (g >> 2) << 5 | b >> 3); break;
+                case 0x04: case 0x1D: s16 = uint16_t((a >> 4) << 12 | (r >> 4) << 8 | (g >> 4) << 4 | b >> 4); break;
+                default: s16 = uint16_t((a >> 7) << 15 | (r >> 3) << 10 | (g >> 3) << 5 | b >> 3); break;  // 1555
+            }
+            std::memcpy(p, &s16, 2);
+        }
+    return true;
+}
+
 uint32_t LinearColorFormat(uint32_t f) {
     switch (f) {
         case 0x06: return 0x12;
