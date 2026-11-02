@@ -13,6 +13,13 @@ library = "FIFAStreet2.dll"  # <exe>.dll, which the executable delay loads
 # extra entry points
 [functions]
 
+# sub_0004FBA0: a player whose appearance block [player+0x62C] is null skips the scale it reads from it (reports
+# 550/551, src/game/hooks.cpp)
+[[hook]]
+at = 0x4FDE0
+call = "FifaCpfaMissing"
+on_true = 0x4FEDA
+
 # functions the host replaces or calls by name, 0 where the image has none
 [symbols]
 _CIacos                                              = 0x2701CC
