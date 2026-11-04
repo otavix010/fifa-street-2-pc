@@ -32,6 +32,8 @@ copy /y "%SDK%\THIRD_PARTY.txt" "%P%\" >nul
 copy /y third_party\dlss\LICENSE.txt "%P%\licencas\NVIDIA-DLSS.txt" >nul
 copy /y third_party\xess\LICENSE.txt "%P%\licencas\Intel-XeSS.txt" >nul
 copy /y third_party\ffx\readme.md "%P%\licencas\AMD-FidelityFX.md" >nul
+copy /y sdk\LICENSE "%P%\licencas\XboxXBERecomp.txt" >nul || exit /b 1
+copy /y docs\REFERENCIAS.md "%P%\" >nul || exit /b 1
 echo Coloque aqui a sua copia do jogo: a imagem .iso do disco ou os arquivos extraidos.> "%P%\assets\LEIA-ME.txt"
 rem Windows' own tar (libarchive) writes zip
 "%SystemRoot%\System32\tar.exe" -a -c -f "%GAME_EXE%.zip" -C "%P%" * || exit /b 1
