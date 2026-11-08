@@ -1,4 +1,21 @@
-# FIFA Street 2 — port nativo para PC
+<h1 align="center">FIFA Street 2 — port nativo para PC</h1>
+
+<p align="center"><i>FIFA Street 2 (Xbox) recompilado para rodar nativo no PC: 120 fps, widescreen, 4K, DLSS/FSR/XeSS e mods. Traga a sua cópia do jogo.</i></p>
+
+<p align="center">
+  <a href="https://github.com/otavix010/fifa-street-2-pc/releases/latest"><img alt="Versão" src="https://img.shields.io/github/v/release/otavix010/fifa-street-2-pc?label=vers%C3%A3o"></a>
+  <a href="https://github.com/otavix010/fifa-street-2-pc/commits/main"><img alt="Última atualização" src="https://img.shields.io/github/last-commit/otavix010/fifa-street-2-pc?label=%C3%BAltima%20atualiza%C3%A7%C3%A3o"></a>
+  <a href="LICENSE"><img alt="Licença" src="https://img.shields.io/github/license/otavix010/fifa-street-2-pc?label=licen%C3%A7a"></a>
+  <a href="https://github.com/otavix010/otavix-launcher/releases/latest"><img alt="Baixar o Otavix Launcher" src="https://img.shields.io/badge/Otavix%20Launcher-baixar-b00020"></a>
+</p>
+
+<p align="center">
+  <a href="#destaques">Destaques</a> ·
+  <a href="#instalar">Instalar</a> ·
+  <a href="#versão-do-jogo">Versão do jogo</a> ·
+  <a href="#requisitos">Requisitos</a> ·
+  <a href="#mods">Mods</a>
+</p>
 
 Port nativo para Windows do **FIFA Street 2** do Xbox original, feito por recompilação estática com o
 [Xbox XBE Recomp](https://github.com/TGP482/XboxXBE-Recomp): o código do jogo vira código de PC, sem emulador, com
