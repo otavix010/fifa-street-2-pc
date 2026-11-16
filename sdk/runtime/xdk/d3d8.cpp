@@ -321,6 +321,13 @@ void VerticalBlank(X86Context& ctx) {
 gpu::State& State() { return g_state; }
 std::recursive_mutex& Lock() { return g_lock; }
 
+// no lock: a crash may have happened inside it
+void LogPush() {
+    if (!g_scratch_push || !mem::IsCommitted(kDevice + kDevPush)) return;
+    LOGE("  d3d: push %08X threshold %08X, scratch %08X + %X read up to %08X", Dev(kDevPush), Dev(kDevThreshold),
+         g_scratch_push, g_scratch_size, g_walk);
+}
+
 }  // namespace d3d
 
 using namespace d3d;
@@ -1380,6 +1387,13 @@ bool ApplyConstant(uint32_t m, uint32_t v) {
 // reads the commands pushed since the last call: vertex data between a begin and an end is drawn, visibility tests
 // are run, constants are stored, the rest is skipped
 void Walk(uint32_t end) {
+    if (g_walk && (end < g_walk || end > g_scratch_push + g_scratch_size)) {
+        // commands pushed past the scratch buffer are written over whatever lies after it
+        static std::atomic<int> said{0};
+        if (said.fetch_add(1, std::memory_order_relaxed) < 8)
+            LOGR("d3d: push pointer %08X outside the scratch buffer %08X + %X, read up to %08X", end, g_scratch_push,
+                 g_scratch_size, g_walk);
+    }
     if (!g_walk || end < g_walk || end > g_scratch_push + g_scratch_size) return;
     for (uint32_t p = g_walk; p + 4 <= end;) {
         // count in bits 18 to 28, bit 30 keeps the method for every value

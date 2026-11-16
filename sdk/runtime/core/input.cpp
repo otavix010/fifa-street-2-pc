@@ -191,6 +191,7 @@ Pad Poll(int port) {
             }
         }
     }
+    Merge(port, p);
     if (app::kGame.pad) app::kGame.pad(port, p);
     return p;
 }

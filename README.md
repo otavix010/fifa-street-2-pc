@@ -35,6 +35,7 @@ gráficos e opções de PC.
   e profundidade reais do jogo.
 - Filtro anisotrópico, VRR (G-SYNC / FreeSync), V-sync, janela, sem bordas ou tela cheia.
 - Controles de Xbox, PlayStation e Switch, com troca de botões e zona morta.
+- **Teclado e mouse**: dá para jogar sem controle, com as teclas trocáveis (veja abaixo).
 - Medidor de desempenho igual ao dos outros ports Otavix (fps, CPU, GPU e memória, nítido em qualquer resolução):
   liga em Configurações > Desempenho no launcher, e o F10 mostra ou esconde durante o jogo.
 - **Mods** sem tocar no jogo: arquivos em `mods/<mod>/` substituem os do disco (veja abaixo).
@@ -73,6 +74,71 @@ Outras versões provavelmente não funcionam; o port avisa quando o `default.xbe
 - Placa de vídeo com Direct3D 12. DLSS precisa de uma NVIDIA RTX; FSR e XeSS funcionam nas outras.
 - Processador com SSE4.2 (praticamente qualquer um dos últimos 12 anos).
 
+## Teclado e mouse
+
+O teclado e o mouse funcionam como um controle na porta 1, junto com o controle que estiver ligado nela (ou sozinhos).
+O mouse é o analógico direito (os dribles): um movimento rápido é um toque no analógico. Enquanto o mouse joga, o
+cursor fica escondido e preso na janela; Alt+Tab solta.
+
+| Tecla | Controle do Xbox | Ataque | Defesa |
+|---|---|---|---|
+| W A S D | Analógico esquerdo | Mover | Mover |
+| Mouse ou 8 4 6 2 do teclado numérico | Analógico direito | Dribles (Trick Stick) | Trick Stick |
+| K, Enter ou clique esquerdo | A | Passe rasteiro | Trocar de jogador |
+| L, Backspace ou clique direito | B | Chute | Interceptar |
+| J ou F | X | Passe alto | Carrinho |
+| I, R ou botão do meio | Y | Exibição (Show Off) | Trocar para o goleiro |
+| Espaço | Gatilho esquerdo | Trick Shift / proteger a bola | Andar de lado |
+| Shift esquerdo | Gatilho direito | Trick Shift / turbo | Turbo |
+| Setas | Direcional | Provocações (e os menus) | |
+| Q / E | Branco / Preto | | |
+| Esc | Start | Pausa | Pausa |
+| Tab | Back | Replay | |
+| Z / C | Clique dos analógicos | | |
+
+Nos menus: W A S D ou as setas escolhem, Enter confirma, Backspace volta e Esc é o Start. F10 mostra o medidor.
+
+Para trocar as teclas, edite o `settings.toml` ao lado do exe. Cada botão aceita várias teclas separadas por espaço:
+
+```toml
+keyboard = true          # false desliga o teclado e o mouse
+keyboard_port = 1        # 1 a 4: use 2 para jogar teclado contra controle
+mouse = true             # false deixa só o teclado
+mouse_sensitivity = 50   # 1 a 200
+
+[keys]
+a = "k enter mouse1"
+b = "l backspace mouse2"
+x = "j f"
+y = "i r mouse3"
+white = "q"
+black = "e"
+lt = "space"
+rt = "lshift"
+start = "escape"
+back = "tab"
+ls = "z"
+rs = "c"
+up = "up"
+down = "down"
+left = "left"
+right = "right"
+stick_up = "w"
+stick_down = "s"
+stick_left = "a"
+stick_right = "d"
+rstick_up = "num8"
+rstick_down = "num2"
+rstick_left = "num4"
+rstick_right = "num6"
+```
+
+Nomes das teclas (pela posição num teclado americano): letras e números, `f1` a `f12`, `space`, `enter`, `escape`,
+`tab`, `backspace`, `lshift`, `rshift`, `lctrl`, `rctrl`, `lalt`, `ralt`, `capslock`, `up`, `down`, `left`, `right`,
+`insert`, `delete`, `home`, `end`, `pageup`, `pagedown`, `num0` a `num9`, `numadd`, `numsub`, `nummul`, `numdiv`,
+`numdec`, `numenter`, `minus`, `equals`, `lbracket`, `rbracket`, `semicolon`, `apostrophe`, `grave`, `backslash`,
+`comma`, `period`, `slash`, e `mouse1` a `mouse5` (esquerdo, direito, meio e os dois laterais).
+
 ## Mods
 
 Cada mod é uma pasta em `mods/`, com os arquivos no mesmo caminho do disco, por exemplo
@@ -96,6 +162,14 @@ Cada mod é uma pasta em `mods/`, com os arquivos no mesmo caminho do disco, por
 ---
 
 **English.** Native Windows port of the original Xbox FIFA Street 2, statically recompiled with Xbox XBE Recomp: 60 fps,
-120 fps with in-between frames, native widescreen, any resolution, DLSS/FSR/XeSS anti-aliasing and mod support. No game
+120 fps with in-between frames, native widescreen, any resolution, DLSS/FSR/XeSS anti-aliasing, mod support and **keyboard and mouse** (W A S D move, the mouse is the trick stick, K/Enter/left click A,
+L/Backspace/right click B, J or F X, I or R Y, Space left trigger, left Shift right trigger, arrows D-pad, Q/E
+white/black, Esc Start, Tab Back; keys can be changed in the `[keys]` table of `settings.toml`, see the table above). No game
 data is included: the first start translates the `default.xbe` of your own copy on your PC. Easiest install: the
 [Otavix Launcher](https://github.com/otavix010/otavix-launcher).
+
+**Español.** Port nativo para Windows del FIFA Street 2 de la Xbox original. Se puede jugar con **teclado y ratón**:
+W A S D mueven, el ratón es el stick derecho (los regates), K/Enter/clic izquierdo es A (pase raso), L/Retroceso/clic
+derecho es B (tiro), J o F es X (pase alto), I o R es Y, Espacio es el gatillo izquierdo, Mayús izquierda el gatillo
+derecho (turbo), las flechas son la cruceta, Q/E blanco/negro, Esc es Start y Tab es Back. Las teclas se cambian en la
+tabla `[keys]` de `settings.toml` (ver la tabla de arriba). El juego no está incluido: necesitas tu propia copia.

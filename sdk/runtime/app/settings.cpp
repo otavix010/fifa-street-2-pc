@@ -63,6 +63,17 @@ void Load() {
                                          "a", "b", "x", "y", "black", "white", "lt", "rt"};
         for (size_t i = 0; i < 16; i++) s.buttons[i] = (*b)[kNames[i]].value_or(s.buttons[i]);
     }
+    s.keyboard = t["keyboard"].value_or(s.keyboard);
+    s.keyboard_port = std::clamp<uint32_t>(t["keyboard_port"].value_or(s.keyboard_port), 1, 4);
+    s.mouse = t["mouse"].value_or(s.mouse);
+    s.mouse_sensitivity = std::clamp<uint32_t>(t["mouse_sensitivity"].value_or(s.mouse_sensitivity), 1, 200);
+    if (const toml::table* k = t["keys"].as_table()) {
+        static const char* kNames[24] = {"up", "down", "left", "right", "start", "back", "ls", "rs",
+                                         "a", "b", "x", "y", "black", "white", "lt", "rt",
+                                         "stick_up", "stick_down", "stick_left", "stick_right",
+                                         "rstick_up", "rstick_down", "rstick_left", "rstick_right"};
+        for (size_t i = 0; i < 24; i++) s.keys[i] = (*k)[kNames[i]].value_or(s.keys[i]);
+    }
     s.join_ip = t["join_ip"].value_or(s.join_ip);
     for (const Option& o : kGame.options) {
         if (o.flag) *o.flag = t[o.key].value_or(*o.flag);
@@ -91,6 +102,10 @@ toml::table Table() {
                   {"upscaler_sharpness", int64_t(s.upscaler_sharpness)},
                   {"deadzone", int64_t(s.deadzone)},
                   {"game_path", s.game_path},
+                  {"keyboard", s.keyboard},
+                  {"keyboard_port", int64_t(s.keyboard_port)},
+                  {"mouse", s.mouse},
+                  {"mouse_sensitivity", int64_t(s.mouse_sensitivity)},
                   {"join_ip", s.join_ip}};
     for (const Option& o : kGame.options) {
         if (o.flag) t.insert(o.key, *o.flag);

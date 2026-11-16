@@ -41,6 +41,16 @@ struct Settings {
     std::array<std::string, 16> buttons = {"dpup", "dpdown", "dpleft", "dpright", "start", "back", "leftstick",
                                            "rightstick", "a", "b", "x", "y", "rightshoulder", "leftshoulder",
                                            "lefttrigger", "righttrigger"};
+    // keyboard and mouse as a controller
+    bool keyboard = true;
+    uint32_t keyboard_port = 1;      // the port they play on, 1 to 4, together with a pad plugged into it
+    bool mouse = true;               // the mouse's buttons and its movement, which is the right stick
+    uint32_t mouse_sensitivity = 50; // percent
+    // the keys of each console button, in Pad order as above, then the left stick's up down left right and the right
+    // stick's: names by position on a US keyboard, mouse1 to mouse5, several apart by spaces
+    std::array<std::string, 24> keys = {"up", "down", "left", "right", "escape", "tab", "z", "c",
+                                        "k enter mouse1", "l backspace mouse2", "j f", "i r mouse3", "e", "q",
+                                        "space", "lshift", "w", "s", "a", "d", "num8", "num2", "num4", "num6"};
     std::string join_ip;                   // co-op: a host past the LAN the system link search also asks
 };
 

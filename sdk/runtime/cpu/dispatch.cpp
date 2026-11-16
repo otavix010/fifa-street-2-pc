@@ -243,6 +243,26 @@ void LogGuestStack(X86Context& ctx, int words) {
         if (dispatch::InCode(v)) LOGE("  [esp+%03X] %08X", i * 4, v);
     }
 }
+
+void LogGuestMemory(X86Context& ctx) {
+    auto row = [](const char* name, uint32_t at, int words) {
+        char text[16 * 9 + 1];
+        int n = 0;
+        for (int i = 0; i < words; i++) {
+            uint32_t a = at + uint32_t(i) * 4;
+            if (!mem::IsCommitted(a) || !mem::IsCommitted(a + 3)) break;
+            n += std::snprintf(text + n, sizeof(text) - size_t(n), " %08X", R32(a));
+        }
+        if (n) LOGE("  %s %08X:%s", name, at, text);
+    };
+    const std::pair<const char*, uint32_t> regs[] = {{"eax", ctx.eax}, {"ecx", ctx.ecx}, {"edx", ctx.edx}, {"ebx", ctx.ebx},
+                                                     {"ebp", ctx.ebp}, {"esi", ctx.esi}, {"edi", ctx.edi}};
+    for (auto [name, v] : regs) {
+        uint32_t at = (v & ~3u) - 16;
+        for (int line = 0; line < 4; line++) row(name, at + uint32_t(line) * 64, 16);
+    }
+    for (int line = 0; line < 4; line++) row("esp", (ctx.esp & ~3u) + uint32_t(line) * 64, 16);
+}
 }  // namespace kernel
 
 void x86_trap(X86Context& ctx, uint32_t va, const char* what) {
