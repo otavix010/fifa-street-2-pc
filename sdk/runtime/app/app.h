@@ -77,6 +77,9 @@ struct GameFiles {
     std::vector<uint8_t> xbe;
 };
 bool FindGame(GameFiles& game);
+// the windows' icon, the game's own: made once from the xbe's title image (window_icon.cpp)
+void MakeWindowIcons(const std::vector<uint8_t>& xbe);
+void* WindowIcon(bool little);  // an HICON
 std::string Sha1(const std::vector<uint8_t>& data);  // lower case hex
 // the recompiled code, <exe>.dll, built from the game in assets when missing or out of date (game_code.cpp) and
 // loaded; false after telling the player why the game cannot start, or when they chose not to start it yet

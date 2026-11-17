@@ -78,7 +78,8 @@ bool OpenSplash() {
     WNDCLASSEXW wc{sizeof(wc)};
     wc.lpfnWndProc = DefWindowProcW;
     wc.hInstance = inst;
-    wc.hIcon = LoadIconW(inst, MAKEINTRESOURCEW(1));
+    wc.hIcon = static_cast<HICON>(WindowIcon(false));
+    wc.hIconSm = static_cast<HICON>(WindowIcon(true));
     wc.hCursor = LoadCursorW(nullptr, MAKEINTRESOURCEW(32514));  // IDC_WAIT
     std::wstring cls = std::wstring(kGame.name) + L"Splash";
     wc.lpszClassName = cls.c_str();

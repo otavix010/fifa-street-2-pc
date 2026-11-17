@@ -385,6 +385,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int) {
 
     app::GameFiles game;
     if (!app::FindGame(game)) return 1;
+    app::MakeWindowIcons(game.xbe);
     if (!app::PrepareGameCode(game)) return 1;
 
     bool splash = app::OpenSplash(), handover = app::StartHandover();
@@ -393,7 +394,8 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int) {
     wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = app::WndProc;
     wc.hInstance = inst;
-    wc.hIcon = LoadIconW(inst, MAKEINTRESOURCEW(1));
+    wc.hIcon = static_cast<HICON>(app::WindowIcon(false));
+    wc.hIconSm = static_cast<HICON>(app::WindowIcon(true));
     wc.hbrBackground = static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
     wc.lpszClassName = app::kGame.name;
     RegisterClassExW(&wc);

@@ -660,7 +660,8 @@ HWND OpenWindow() {
     WNDCLASSEXW wc{sizeof(wc)};
     wc.lpfnWndProc = WndProc;
     wc.hInstance = inst;
-    wc.hIcon = LoadIconW(inst, MAKEINTRESOURCEW(1));
+    wc.hIcon = static_cast<HICON>(WindowIcon(false));
+    wc.hIconSm = static_cast<HICON>(WindowIcon(true));
     wc.hCursor = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512));  // IDC_ARROW
     std::wstring class_name = std::wstring(kGame.name) + L"GameCode";
     wc.lpszClassName = class_name.c_str();
