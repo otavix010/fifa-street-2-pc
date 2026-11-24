@@ -152,6 +152,12 @@ Cada mod é uma pasta em `mods/`, com os arquivos no mesmo caminho do disco, por
    fontes oficiais (eles não ficam no repositório).
 3. `build.bat` compila; `release.bat` monta o `FIFAStreet2.zip` sem nada do jogo.
 
+## Como é feito
+
+**Como é feito:** o Otavix é um projeto de fãs, sem fins lucrativos, desenvolvido com a ajuda de assistentes de IA (Claude, da Anthropic), que escrevem e testam boa parte do código sob a direção do autor. Cada versão passa por testes antes de ser publicada, e os reports dos jogadores entram no mesmo ciclo.
+
+**How it is made:** Otavix is a non-profit fan project developed with the help of AI assistants (Anthropic's Claude), which write and test much of the code under the author's direction. Every release is tested before it is published, and player reports feed the same loop.
+
 ## Créditos e licença
 
 - Código deste port: [MIT](LICENSE).
