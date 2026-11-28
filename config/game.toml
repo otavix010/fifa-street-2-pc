@@ -20,6 +20,12 @@ at = 0x4FDE0
 call = "FifaCpfaMissing"
 on_true = 0x4FEDA
 
+# sub_0013F1A0, from the scene's constructor: a scene whose stadium camera ([scene+0x62C]) was never loaded gets a
+# default one built by the game's own constructor (reports 1516/1517/1521, src/game/hooks.cpp)
+[[hook]]
+at = 0x13F1E3
+call = "FifaSceneCamera"
+
 # functions the host replaces or calls by name, 0 where the image has none
 [symbols]
 _CIacos                                              = 0x2701CC
